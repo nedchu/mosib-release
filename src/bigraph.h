@@ -9,6 +9,10 @@
 #include <queue>
 
 
+/**
+ * The input bipartite graph.
+ * This graph will not be updated after being built.
+ */
 class BiGraph {
 public:
 	VI get_12hop(int u) const;
@@ -22,10 +26,22 @@ public:
 	int edge_num_;
 };
 
+/// @brief build the bipartite graph from file
+/// @param input_path the path the input graph file
+/// @return the bipartite graph built
 BiGraph* from_text(std::string input_path);
+
+/// @brief build the bipartite graph from a list of edges
+/// @param edges a list of edges (integer pairs)
+/// @return the bipartite graph built
 BiGraph* from_edges(std::vector<PII> &edges);
 
 
+/**
+ * An induced subgraph of the input bipartite graph ${g_}.
+ * It can support efficient node removals and neighbor set
+ * retrieval on the subgraph.
+ */
 class BiSubgraph {
 public:
 	BiSubgraph(const BiGraph& g, const VI& node_set);

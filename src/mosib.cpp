@@ -21,23 +21,25 @@ void SimilarityStore::set_sim(int u, int v, double sim)
 
 SimilarBiclique LocalExact::local_exact_query(int q, int size, double init_sim)
 {
-	// init local result and G_r
+	// init local result and G_r with hop-based and similarity-based reduction rule
 	this->size_ = size;
 	this->result_ = SimilarBiclique();
 	VI node_set = _get_2hop_and_sim(q, init_sim);
 	if (node_set.size() < size) return this->result_;
 	node_set.insert(node_set.end(), g_.adj_[q].begin(), g_.adj_[q].end());
 
+	// apply degree-based reduction rule
 	subgraph_.from_node_set(node_set);
 	_deg_rule();
 
+	// run similarity-first search on the subgraph
 	_simiarity_first_search_on_subgraph(q);
 	return this->result_;
 }
 
 SimilarBiclique LocalExact::local_exact_query_left(int q, int size, const VI& remain_left, double init_sim)
 {
-	// init local result and G_r
+	// init local result and G_r with hop-based and similarity-based rule
 	this->size_ = size;
 	this->result_ = SimilarBiclique();
 
@@ -45,9 +47,11 @@ SimilarBiclique LocalExact::local_exact_query_left(int q, int size, const VI& re
 	if (node_set.size() < size) return this->result_;
 	node_set.insert(node_set.end(), g_.adj_[q].begin(), g_.adj_[q].end());
 
+	// apply degree-based rule
 	subgraph_.from_node_set(node_set);
 	_deg_rule();
 
+	// run similarity-first search on the subgraph
 	_simiarity_first_search_on_subgraph(q);
 	return this->result_;
 }
@@ -55,18 +59,19 @@ SimilarBiclique LocalExact::local_exact_query_left(int q, int size, const VI& re
 void LocalExact::_sim_rule(int q, double init_sim)
 {
 	if (init_sim <= 0) return;
+	// remove the left-side nodes whose similarity to ${q} < ${init_sim}
 	VI to_remove;
 	for (int left_u : subgraph_.get_remain()) {
 		if (!g_.is_left_node(left_u)) break;
 		double sim = sim_.get_sim(left_u, q);
 		if (sim < init_sim + k_eps) to_remove.push_back(left_u);
-		//if (sim < init_sim - k_eps) to_remove.push_back(left_u);
 	}
 	subgraph_.remove_nodes(to_remove);
 }
 
 void LocalExact::_deg_rule()
 {
+	// recursively remove nodes whose degree < ${size_}
 	subgraph_.deg_rule(size_);
 }
 
@@ -74,6 +79,7 @@ void LocalExact::_simiarity_first_search_on_subgraph(int q)
 {
 	if (!subgraph_.is_node_exist(q)) return;
 	// sort nodes by decreasing order of sim(u,q)
+	// The first similarity-first search rule, i.e., SFS
 	std::map<int, double> left_u_sim;
 	std::vector<PDI> to_sort_by_sim;
 	for (int left_u : subgraph_.get_remain()) {
@@ -87,16 +93,20 @@ void LocalExact::_simiarity_first_search_on_subgraph(int q)
 	std::sort(to_sort_by_sim.begin(), to_sort_by_sim.end(), std::greater<PDI>());
 	if (to_sort_by_sim.size() + 1 < size_) return;
 
+	// attempt to move a node into the current biclique with the ordering
 	VI visited;
 	for (const PDI& pdi : to_sort_by_sim) {
 		int left_u = pdi.second;
 		if (!subgraph_.is_node_exist(left_u)) continue;
 
+		// build biclique with left-side vertices q and left_u
 		SimilarBiclique nxt;
 		nxt.L_ = { q, left_u };
 		nxt.R_ = get_intersection(subgraph_.get_remain_adj(left_u), subgraph_.get_remain_adj(q));
 		nxt.sim_ = sim_.get_sim(left_u, q);
 
+		// ${P} is the intersection of 2-hop neighbors of ${left_u} and visited vertices
+		// The second similarity-first search rule, i.e., SFS2
 		VI P = subgraph_.intersect_P_with_2hop(visited, left_u);
 		_enum(nxt, P, left_u_sim);
 		visited.push_back(left_u);
@@ -105,6 +115,8 @@ void LocalExact::_simiarity_first_search_on_subgraph(int q)
 
 VI LocalExact::_get_2hop_and_sim(int q, double sim)
 {
+	// speed up the jaccard computation with ${cnt_}
+	// ${cnt_[w]} is the number of common neighbors of q and w
 	VI remain;
 	for (int v : g_.adj_[q]) {
 		for (int w : g_.adj_[v]) {
@@ -112,6 +124,8 @@ VI LocalExact::_get_2hop_and_sim(int q, double sim)
 		}
 	}
 
+	// ${remain} is the 2-hop neighbors (hop-based rule)
+	// remove nodes with low similarity to q (similarity-based rule)
 	VI ans;
 	for (int u : remain) {
 		int num = cnt_[u];
@@ -128,6 +142,7 @@ VI LocalExact::_get_2hop_and_sim(int q, double sim)
 
 VI LocalExact::_get_2hop_and_sim(int q, const VI& remain_left, double sim)
 {
+	// apply the similarity-based reduction rule within ${remain_left}
 	VI ans;
 	for (int left_u : remain_left) {
 		double jaccard = sim_.get_sim(left_u, q);
@@ -145,6 +160,8 @@ void LocalExact::_enum(const SimilarBiclique& cur, const VI& P, std::map<int, do
 		return;
 	}
 	if (std::min(cur.L_.size(), cur.R_.size()) >= this->size_) {
+		// apply similarity-based and degree-based rule when ${cur}
+		// has a higher similarity than ${this->result_}
 		this->result_ = cur;
 		int q = cur.L_[0];
 		_sim_rule(q, cur.sim_);
@@ -152,6 +169,7 @@ void LocalExact::_enum(const SimilarBiclique& cur, const VI& P, std::map<int, do
 		return;
 	}
 
+	// order all candidate vertices, i.e., SFS rule
 	std::vector<PDI> to_sort_by_sim;
 	std::map<int, double> left_u_sim;
 	int last_left_u = cur.L_.back();
@@ -170,6 +188,7 @@ void LocalExact::_enum(const SimilarBiclique& cur, const VI& P, std::map<int, do
 		if (!subgraph_.is_node_exist(left_u)) continue;
 		cur_P.erase(left_u);
 
+		// attempt to add ${left_u} to the current biclique
 		VI L = cur.L_;
 		L.push_back(left_u);
 		VI R = get_intersection(cur.R_, subgraph_.get_remain_adj(left_u));
@@ -180,12 +199,6 @@ void LocalExact::_enum(const SimilarBiclique& cur, const VI& P, std::map<int, do
 		nxt_P = subgraph_.intersect_P_with_2hop(nxt_P, left_u);
 		_enum(nxt, nxt_P, left_u_sim);
 	}
-}
-
-void SimilarBiclique::sort_vertices()
-{
-	std::sort(L_.begin(), L_.end());
-	std::sort(R_.begin(), R_.end());
 }
 
 SimilarBiclique GlobalExact::global_exact_query(int size)
@@ -251,6 +264,7 @@ SimilarBiclique GlobalApp::global_app_query(int size)
 	SimilarBiclique ans;
 	LocalExact algo(g_);
 
+	// divide the nodes in ${remain} into groups
 	VI remain = g_.get_kcore(size);
 	std::vector<PII> to_sort;
 	for (int i = 0; i < remain.size(); i++) {
@@ -258,6 +272,8 @@ SimilarBiclique GlobalApp::global_app_query(int size)
 		to_sort.push_back({0, remain[i] });
 	}
 	VI sep = get_sep(max_group, to_sort, min_hash_);
+
+	// for each group, find the most similar biclique within the group
 	for (int i = 0; i + 1 < sep.size(); i++) {
 		int l = sep[i], r = sep[i + 1];
 		if (r - l < size) continue;
@@ -284,6 +300,7 @@ void GlobalApp::__init_min_hash(int hash_num)
 	int nl = g_.left_node_num_;
 	int nr = g_.right_node_num_;
 
+	// get the Min-Hash of ${hash_num} random hash functions
 	min_hash_ = VVI(nl, VI(hash_num, -1));
 	VI arr(nr, 0);
 	for (int j = 0; j < nr; j++) arr[j] = j;
@@ -328,7 +345,6 @@ VI LocalExactNoHop::get_sim(int q, double sim)
 	VI ans;
 	for (int u = 0; u < g_.left_node_num_; u++) {
 		int num = cnt_[u];
-		double jaccard = Jaccard(g_.adj_[u], g_.adj_[q]);
 		if (num) {
 			double jaccard = Jaccard(g_.adj_[u], g_.adj_[q]);
 			if (jaccard > sim + k_eps) {
@@ -336,6 +352,7 @@ VI LocalExactNoHop::get_sim(int q, double sim)
 				ans.push_back(u);
 			}
 		}
+		cnt_[u] = 0;
 	}
 	return ans;
 }

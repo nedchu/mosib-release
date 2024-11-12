@@ -25,9 +25,9 @@ make -j
 
 After that, you will get three executable programs.
 
-- `local_exact`: the exact local search of *Mosib*
-- `global_exact`: the exact global search of *Mosib*
-- `global_app`: the approximate global search of *Mosib-GloApp*
+- `local_exact`: the exact local search algorithm of *Mosib*
+- `global_exact`: the exact global search algorithm of *Mosib*
+- `global_app`: the approximate global search algorithm of *Mosib-GloApp*
 
 ## Run
 Build and then run the script at `./build`. By default, we run algorithms on the GitHub dataset (see `./dataset/bi-github.txt`).

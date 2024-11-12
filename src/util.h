@@ -4,8 +4,16 @@
 #include "global.h"
 
 
+/// @brief the Jaccard similarity of ordered vectors
+/// @param x an ordered vector of integers
+/// @param y another ordered vector of integers
+/// @return the Jaccard similarty
 double Jaccard(const VI & x, const VI & y);
 
+/// @brief the intersection of ordered containers
+/// @param x the first ordered container
+/// @param y the second ordered container 
+/// @return the intersection
 template <class _InIt1, class _InIt2>
 VI get_intersection(const _InIt1& x, const _InIt2& y)
 {
@@ -16,6 +24,8 @@ VI get_intersection(const _InIt1& x, const _InIt2& y)
 	return ans;
 }
 
+/// @brief the intersection of ordered lists.
+/// The second one is a range of iterators.
 VI get_intersection(const VI &x, VI::const_iterator y_b, VI::const_iterator y_e);
 double get_duration(hclock::time_point s, hclock::time_point t);
 
