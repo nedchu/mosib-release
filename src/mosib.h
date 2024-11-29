@@ -128,15 +128,20 @@ public:
 	SimilarBiclique global_app_query(int size);
 
 private:
+	/// @brief initialize Min-Hash
+	/// @param hash_num the number of hash functions
 	void __init_min_hash(int hash_num);
 
+	/// the input graph
 	const BiGraph& g_;
+	/// the number of hash functions
 	int hash_num_;
+	/// the Min-Hash values of different functions
 	VVI min_hash_;
 };
 
 /// <summary>
-/// Local Exact Abalation Test
+/// Local Exact Abalation Test (Experiment)
 /// Test the performance without a rule
 /// </summary>
 class LocalExactNoDeg : public LocalExact {

@@ -27,6 +27,11 @@ VI get_intersection(const _InIt1& x, const _InIt2& y)
 /// @brief the intersection of ordered lists.
 /// The second one is a range of iterators.
 VI get_intersection(const VI &x, VI::const_iterator y_b, VI::const_iterator y_e);
+
+/// @brief get the time duration between s and t
+/// @param s the begin time
+/// @param t the end time
+/// @return time duration
 double get_duration(hclock::time_point s, hclock::time_point t);
 
 #endif /* util_h */
