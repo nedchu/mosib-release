@@ -3,11 +3,13 @@
 
 VI BiGraph::get_12hop(int u) const
 {
+	// insert into ${ans} 1-hop and 2-hop neighbors of u
 	VI ans(adj_[u]);
 	for (int nbr : adj_[u]) {
 		const VI& vec = adj_[nbr];
 		std::copy(vec.begin(), vec.end(), std::back_inserter(ans));
 	}
+	// make elements of ${ans} unique
 	std::sort(ans.begin(), ans.end());
 	auto unique_end_it = std::unique(ans.begin(), ans.end());
 	ans.erase(unique_end_it, ans.end());
@@ -25,6 +27,7 @@ VI BiGraph::get_kcore(int k) const
 	int nr = right_node_num_;
 	int n = nl + nr;
 
+	// store into ${q} nodes with degree < k
 	std::queue<int> q;
 	VI deg(n, 0);
 	for (int i = 0; i < n; i++) {
@@ -34,6 +37,7 @@ VI BiGraph::get_kcore(int k) const
 		}
 	}
 
+	// recursively remove nodes with degree < k
 	while (!q.empty()) {
 		int u = q.front();
 		q.pop();
@@ -46,6 +50,8 @@ VI BiGraph::get_kcore(int k) const
 			deg[nbr]--;
 		}
 	}
+
+	// return k-core
 	VI ans;
 	for (int i = 0; i < n; i++) {
 		if (deg[i] >= k) ans.push_back(i);
@@ -72,6 +78,7 @@ BiGraph* from_text(std::string input_path)
 
 BiGraph* from_edges(std::vector<PII> &edges)
 {
+	// build the number of left-side and right-side vertices
 	int left_node_max = 0, right_node_max = 0;
 	for (PII &e : edges) {
 		left_node_max = std::max(left_node_max, e.first);
@@ -85,6 +92,7 @@ BiGraph* from_edges(std::vector<PII> &edges)
 	g.right_node_num_ = right_node_max - left_node_max;
 	g.edge_num_ = edges.size();
 
+	// build the adjacency lists of nodes l..r
 	auto build_adj_from_sorted_edges = [](VVI& adj, std::vector<PII>& edges, int l, int r) {
 		std::sort(edges.begin(), edges.end());
 		int ie = 0;
@@ -100,7 +108,9 @@ BiGraph* from_edges(std::vector<PII> &edges)
 		}
 	};
 
+	// build the adjacency lists of left-side vertices
 	build_adj_from_sorted_edges(g.adj_, edges, 0, left_node_max);
+	// build the adjacency lists of right-side vertices
 	for (PII &e : edges) {
 		std::swap(e.first, e.second);
 	}
@@ -115,17 +125,20 @@ BiSubgraph::BiSubgraph(const BiGraph& g, const VI& node_set) : g_(g)
 
 void BiSubgraph::from_node_set(const VI& node_set)
 {
+	// update the size of ${remain_adj_}
 	if (node_set.empty()) return;
 	clear();
 	int max_id = node_set.back() + 1;
 	if (max_id > remain_adj_.size()) remain_adj_.resize(max_id);
 
+	// build the remaining adjacency lists of left-side vertices
 	int right_pos = std::lower_bound(node_set.begin(), node_set.end(), g_.left_node_num_) - node_set.begin();
 	for (int i = 0; i < right_pos; i++) {
 		int u = node_set[i];
 		VI remain_adj = get_intersection(g_.adj_[u], node_set.begin() + right_pos, node_set.end());
 		remain_adj_[u] = SI(remain_adj.begin(), remain_adj.end());
 	}
+	// build the remaining adjacency lists of right-side vertices
 	for (int i = right_pos; i < node_set.size(); i++) {
 		int u = node_set[i];
 		VI remain_adj = get_intersection(g_.adj_[u], node_set.begin(), node_set.begin() + right_pos);
@@ -149,6 +162,7 @@ void BiSubgraph::clear()
 
 void BiSubgraph::deg_rule(int size_bound)
 {
+	// store into ${q} nodes with degree < ${size_bound}
 	std::queue<int> q;
 	for (int u : remain_) {
 		int deg = remain_adj_[u].size();
@@ -157,6 +171,7 @@ void BiSubgraph::deg_rule(int size_bound)
 		}
 	}
 
+	// recursively remove nodes with degree < ${size_bound}
 	while (!q.empty()) {
 		int u = q.front();
 		q.pop();
@@ -176,10 +191,12 @@ void BiSubgraph::deg_rule(int size_bound)
 void BiSubgraph::remove_nodes(const VI& nodes)
 {
 	for (int u : nodes) {
+		// remove u from any adjacency lists
 		for (int nbr : remain_adj_[u]) {
 			auto& cur_adj = remain_adj_[nbr];
 			cur_adj.erase(u);
 		}
+		// remove u from ${remain_} and ${remain_adj_}
 		remain_.erase(u);
 		remain_adj_[u].clear();
 	}
@@ -211,6 +228,7 @@ VI BiSubgraph::intersect_P_with_2hop(const VI& P, int u)
 	VI ans;
 	for (int v : P) {
 		if (!is_node_exist(v) || v == u) continue;
+		// quickly check if v is 2-hop neighbor of u with ${remain_adj_}
 		for (int nbr_u : adj) {
 			if (remain_adj_[v].count(nbr_u)) {
 				ans.push_back(v);

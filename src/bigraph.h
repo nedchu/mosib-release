@@ -56,7 +56,8 @@ public:
 	BiSubgraph(const BiGraph& g, const VI& node_set);
 	BiSubgraph(const BiGraph& g) : g_(g) {}
 
-	/// build subgraph induced by ${node_set} 
+	/// build subgraph induced by ${node_set}
+	/// ${node_set} must be sorted
 	void from_node_set(const VI& node_set);
 
 	/// recursively remove all vertices whose
